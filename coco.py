@@ -229,7 +229,7 @@ def _get_class_names(basedir, name):
 
 def register_coco(basedir):
     basedir_expanded = os.path.expanduser(basedir)
-
+    logger.warning(f'About to register datasets in {basedir_expanded}')
     for folder_name in os.listdir(basedir_expanded):
         if not os.path.isdir(os.path.join(basedir_expanded, folder_name)):
             continue
