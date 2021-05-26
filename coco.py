@@ -230,6 +230,7 @@ def _get_class_names(basedir, name):
 def register_coco(basedir):
     basedir_expanded = os.path.expanduser(basedir)
     logger.warning(f'About to register datasets in {basedir_expanded}')
+    print('About to register datasets')
     for folder_name in os.listdir(basedir_expanded):
         if not os.path.isdir(os.path.join(basedir_expanded, folder_name)):
             continue
@@ -241,4 +242,4 @@ def register_coco(basedir):
         DatasetRegistry.register(folder_name, lambda x=split: COCODetection(basedir_expanded, x))
         DatasetRegistry.register_metadata(folder_name, 'class_names', class_names)
         logger.info('dataset {0} registered.'.format(folder_name))
-
+    print('Dataset registration complete')
