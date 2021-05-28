@@ -196,7 +196,7 @@ class COCODetection(DatasetSplit):
         return self.load(add_gt=False)
 
     def eval_inference_results(self, results, output=None):
-        continuous_id_to_COCO_id = {v: k for k, v in self.COCO_id_to_category_id.items()}
+        #continuous_id_to_COCO_id = {v: k for k, v in self.COCO_id_to_category_id.items()}
         for res in results:
             # convert to COCO's incontinuous category id
             #if res['category_id'] in continuous_id_to_COCO_id:
