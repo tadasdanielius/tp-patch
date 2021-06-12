@@ -223,7 +223,7 @@ def _get_annotation_file(basedir, folder_name):
     files = os.listdir(ann_folder)
     json_files = list(filter(lambda x: x.endswith('.json'), files))
     assert len(json_files) == 1, "Must have only one annotation json file"
-    full_name = f'{basedir}{folder_name}/{json_files[0]}'
+    full_name = f'{basedir}/{folder_name}/{json_files[0]}'
     logger.info(f"Annotation file: {full_name}")
     return full_name
 
