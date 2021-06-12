@@ -45,9 +45,10 @@ class COCODetection(DatasetSplit):
                 basedir, folder_name
             )
         )
-        assert os.path.isdir(self._imgdir), "{} is not a directory!".format(self._imgdir)
-        annotation_file = os.path.join(
-            basedir, 'annotations/instances_{}.json'.format(split))
+        assert os.path.isdir(self._imgdir), f"{self._imgdir} is not a directory!"
+        #annotation_file = os.path.join(
+        #    basedir, 'annotations/instances_{}.json'.format(split))
+        annotation_file = _get_annotation_file(basedir, folder_name)
         assert os.path.isfile(annotation_file), annotation_file
 
         self.coco = COCO(annotation_file)
@@ -157,7 +158,7 @@ class COCODetection(DatasetSplit):
             # Require non-zero seg area and more than 1x1 box size
             if obj['area'] > 1 and w > 0 and h > 0:
                 all_boxes.append([x1, y1, x2, y2])
-                #all_cls.append(self.COCO_id_to_category_id.get(obj['category_id'], obj['category_id']))
+                # all_cls.append(self.COCO_id_to_category_id.get(obj['category_id'], obj['category_id']))
                 all_cls.append(obj['category_id'])
                 iscrowd = obj.get("iscrowd", 0)
                 all_iscrowd.append(iscrowd)
@@ -196,10 +197,10 @@ class COCODetection(DatasetSplit):
         return self.load(add_gt=False)
 
     def eval_inference_results(self, results, output=None):
-        #continuous_id_to_COCO_id = {v: k for k, v in self.COCO_id_to_category_id.items()}
+        continuous_id_to_COCO_id = {v: k for k, v in self.COCO_id_to_category_id.items()}
         for res in results:
             # convert to COCO's incontinuous category id
-            #if res['category_id'] in continuous_id_to_COCO_id:
+            # if res['category_id'] in continuous_id_to_COCO_id:
             #    res['category_id'] = continuous_id_to_COCO_id[res['category_id']]
             # COCO expects results in xywh format
             box = res['bbox']
@@ -217,10 +218,21 @@ class COCODetection(DatasetSplit):
             return {}
 
 
+def _get_annotation_file(basedir, folder_name):
+    ann_folder = os.path.join(basedir, folder_name)
+    files = os.listdir(ann_folder)
+    json_files = list(filter(lambda x: x.endswith('.json'), files))
+    assert len(json_files) == 1, "Must have only one annotation json file"
+    full_name = f'{basedir}{folder_name}/{json_files[0]}'
+    logger.info(f"Annotation file: {full_name}")
+    return full_name
+
+
 def _get_class_names(basedir, name):
-    annotation_file = '{0}/annotations/instances_{1}.json'.format(basedir, name)
+    # annotation_file = '{0}/annotations/instances_{1}.json'.format(basedir, name)
+    annotation_file = _get_annotation_file(basedir, name)
     coco = COCO(annotation_file)
-    categories = [''] * (len(coco.cats)+1)
+    categories = [''] * (len(coco.cats) + 1)
     categories[0] = 'BG'
     for k, category in coco.cats.items():
         categories[category['id']] = category['name']
@@ -229,17 +241,17 @@ def _get_class_names(basedir, name):
 
 def register_coco(basedir):
     basedir_expanded = os.path.expanduser(basedir)
-    logger.warning(f'About to register datasets in {basedir_expanded}')
-    print('About to register datasets')
+
     for folder_name in os.listdir(basedir_expanded):
+        # Filter out files and folders which does not start coco_
         if not os.path.isdir(os.path.join(basedir_expanded, folder_name)):
             continue
         if not folder_name.startswith('coco_'):
             continue
         split = folder_name.replace('coco_', '')
-        class_names = _get_class_names(basedir_expanded, split)
+        class_names = _get_class_names(basedir_expanded, folder_name)
         logger.info('registering dataset {0}'.format(folder_name))
         DatasetRegistry.register(folder_name, lambda x=split: COCODetection(basedir_expanded, x))
         DatasetRegistry.register_metadata(folder_name, 'class_names', class_names)
         logger.info('dataset {0} registered.'.format(folder_name))
-    print('Dataset registration complete')
+
