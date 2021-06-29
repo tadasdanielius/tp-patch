@@ -17,7 +17,7 @@ __all__ = ['register_coco']
 
 class COCODetection(DatasetSplit):
 
-    def __init__(self, basedir, split, folder_name=None):
+    def __init__(self, basedir, split, COCO_id_to_category_id, folder_name=None):
         """
         Args:
             basedir (str): root of the dataset which contains the subdirectories for each split and annotations
@@ -36,6 +36,7 @@ class COCODetection(DatasetSplit):
 
             use `COCODetection(DIR, 'XX')` and `COCODetection(DIR, 'YY')`
         """
+        self.COCO_id_to_category_id = COCO_id_to_category_id
         if folder_name is None:
             folder_name = 'coco_' + split
 
@@ -58,6 +59,7 @@ class COCODetection(DatasetSplit):
                 annotation_file, folder_name, split, self._imgdir
             )
         )
+        self.category_map = {}
 
     # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
     def print_coco_metrics(self, results):
@@ -158,8 +160,8 @@ class COCODetection(DatasetSplit):
             # Require non-zero seg area and more than 1x1 box size
             if obj['area'] > 1 and w > 0 and h > 0:
                 all_boxes.append([x1, y1, x2, y2])
-                # all_cls.append(self.COCO_id_to_category_id.get(obj['category_id'], obj['category_id']))
-                all_cls.append(obj['category_id'])
+                all_cls.append(self.COCO_id_to_category_id.get(obj['category_id'], obj['category_id']))
+                # all_cls.append(obj['category_id'])
                 iscrowd = obj.get("iscrowd", 0)
                 all_iscrowd.append(iscrowd)
 
@@ -200,8 +202,8 @@ class COCODetection(DatasetSplit):
         continuous_id_to_COCO_id = {v: k for k, v in self.COCO_id_to_category_id.items()}
         for res in results:
             # convert to COCO's incontinuous category id
-            # if res['category_id'] in continuous_id_to_COCO_id:
-            #    res['category_id'] = continuous_id_to_COCO_id[res['category_id']]
+            if res['category_id'] in continuous_id_to_COCO_id:
+                res['category_id'] = continuous_id_to_COCO_id[res['category_id']]
             # COCO expects results in xywh format
             box = res['bbox']
             box[2] -= box[0]
@@ -232,11 +234,17 @@ def _get_class_names(basedir, name):
     # annotation_file = '{0}/annotations/instances_{1}.json'.format(basedir, name)
     annotation_file = _get_annotation_file(basedir, name)
     coco = COCO(annotation_file)
-    categories = [''] * (len(coco.cats) + 1)
-    categories[0] = 'BG'
+    #categories = [''] * (len(coco.cats) + 1)
+    categories = list()
+    categories.append('BG')
+    idx = 1
+    category_map = {0: 0}
     for k, category in coco.cats.items():
-        categories[category['id']] = category['name']
-    return categories
+        #categories[category['id']] = category['name']
+        categories.append(category['name'])
+        category_map[category['id']] = idx
+        idx += 1
+    return categories, category_map
 
 
 def register_coco(basedir):
@@ -249,9 +257,14 @@ def register_coco(basedir):
         if not folder_name.startswith('coco_'):
             continue
         split = folder_name.replace('coco_', '')
-        class_names = _get_class_names(basedir_expanded, folder_name)
+        class_names, category_map = _get_class_names(basedir_expanded, folder_name)
         logger.info('registering dataset {0}'.format(folder_name))
-        DatasetRegistry.register(folder_name, lambda x=split: COCODetection(basedir_expanded, x))
+
+        DatasetRegistry.register(folder_name,
+                                 lambda x=split, y=category_map:
+                                 COCODetection(basedir_expanded, x, COCO_id_to_category_id=y))
+
         DatasetRegistry.register_metadata(folder_name, 'class_names', class_names)
         logger.info('dataset {0} registered.'.format(folder_name))
+
 
